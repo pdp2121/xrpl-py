@@ -1,0 +1,246 @@
+name: Build MPT Crypto Libraries
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - confidential-mpt
+    paths:
+      - ".github/workflows/build-mpt-crypto-libs.yml"
+      - "tools/internal-ripplex-research-mpt-crypto/mpt-crypto/**"
+
+# NOTE: This workflow builds mpt-crypto from tools/internal-ripplex-research-mpt-crypto/mpt-crypto
+# Make sure this directory is committed to your repository
+
+jobs:
+  build_linux:
+    name: Build for Linux (x86_64)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libssl-dev
+
+      - name: Clone secp256k1
+        run: |
+          git clone https://github.com/bitcoin-core/secp256k1.git /tmp/secp256k1
+          cd /tmp/secp256k1
+          git checkout v0.4.1
+
+      - name: Build mpt-crypto
+        run: |
+          cd tools/internal-ripplex-research-mpt-crypto/mpt-crypto
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release \
+                   -DSECP256K1_SOURCE_DIR=/tmp/secp256k1 \
+                   -DBUILD_SHARED_LIBS=OFF \
+                   -DBUILD_TESTS=OFF \
+                   -DBUILD_UTILITY=OFF
+          make
+          # List what was built
+          find . -name "*.a" -o -name "*.so" -o -name "*.dylib"
+
+      - name: Copy libraries
+        run: |
+          mkdir -p xrpl/core/confidential/libs/linux
+          # Find and copy mpt-crypto library
+          find tools/internal-ripplex-research-mpt-crypto/mpt-crypto/build -name "libmpt-crypto.a" -exec cp {} xrpl/core/confidential/libs/linux/ \;
+          # Find and copy secp256k1 library
+          find tools/internal-ripplex-research-mpt-crypto/mpt-crypto/build -name "libsecp256k1.a" -exec cp {} xrpl/core/confidential/libs/linux/ \;
+          ls -lh xrpl/core/confidential/libs/linux/
+
+      - name: Upload libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpt-crypto-linux-x86_64
+          path: xrpl/core/confidential/libs/linux/*.a
+
+  build_macos:
+    name: Build for macOS (universal)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install cmake openssl
+
+      - name: Clone secp256k1
+        run: |
+          git clone https://github.com/bitcoin-core/secp256k1.git /tmp/secp256k1
+          cd /tmp/secp256k1
+          git checkout v0.4.1
+
+      - name: Build mpt-crypto
+        run: |
+          cd tools/internal-ripplex-research-mpt-crypto/mpt-crypto
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release \
+                   -DSECP256K1_SOURCE_DIR=/tmp/secp256k1 \
+                   -DBUILD_SHARED_LIBS=OFF \
+                   -DBUILD_TESTS=OFF \
+                   -DBUILD_UTILITY=OFF
+          make
+          # List what was built
+          find . -name "*.a" -o -name "*.so" -o -name "*.dylib"
+
+      - name: Copy libraries
+        run: |
+          mkdir -p xrpl/core/confidential/libs/darwin
+          # Find and copy mpt-crypto library
+          find tools/internal-ripplex-research-mpt-crypto/mpt-crypto/build -name "libmpt-crypto.a" -exec cp {} xrpl/core/confidential/libs/darwin/ \;
+          # Find and copy secp256k1 library
+          find tools/internal-ripplex-research-mpt-crypto/mpt-crypto/build -name "libsecp256k1.a" -exec cp {} xrpl/core/confidential/libs/darwin/ \;
+          ls -lh xrpl/core/confidential/libs/darwin/
+
+      - name: Upload libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpt-crypto-darwin-universal
+          path: xrpl/core/confidential/libs/darwin/*.a
+
+  # Windows build disabled due to VLA (Variable Length Array) compilation errors
+  # MSVC doesn't support C99 VLAs used in proof_same_plaintext_multi.c
+  # TODO: Fix VLA usage by converting to malloc/free for MSVC compatibility
+  # build_windows:
+  #   name: Build for Windows (x86_64)
+  #   runs-on: windows-2022
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Install OpenSSL
+  #       run: choco install openssl --limit-output --no-progress
+  #
+  #     - name: Clone secp256k1
+  #       shell: cmd
+  #       run: git clone https://github.com/bitcoin-core/secp256k1.git C:\secp256k1 && cd /D C:\secp256k1 && git checkout v0.4.1
+  #
+  #     - name: Build mpt-crypto
+  #       shell: cmd
+  #       run: cd /D tools\internal-ripplex-research-mpt-crypto\mpt-crypto && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSECP256K1_SOURCE_DIR=C:\secp256k1 -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_UTILITY=OFF && cmake --build . --config Release
+  #
+  #     - name: List built files
+  #       shell: pwsh
+  #       run: Get-ChildItem -Path tools/internal-ripplex-research-mpt-crypto/mpt-crypto/build -Recurse -Filter "*.lib" | Select-Object FullName
+  #
+  #     - name: Copy libraries
+  #       shell: pwsh
+  #       run: |
+  #         New-Item -ItemType Directory -Force -Path xrpl/core/confidential/libs/win32
+  #         # Find and copy mpt-crypto library
+  #         Get-ChildItem -Path tools/internal-ripplex-research-mpt-crypto/mpt-crypto/build -Recurse -Filter "mpt-crypto.lib" | Copy-Item -Destination xrpl/core/confidential/libs/win32/
+  #         # Find and copy secp256k1 library
+  #         Get-ChildItem -Path tools/internal-ripplex-research-mpt-crypto/mpt-crypto/build -Recurse -Filter "secp256k1.lib" | Copy-Item -Destination xrpl/core/confidential/libs/win32/
+  #         Get-ChildItem xrpl/core/confidential/libs/win32/
+  #
+  #     - name: Upload libraries
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: mpt-crypto-win32-x86_64
+  #         path: xrpl/core/confidential/libs/win32/*.lib
+
+  test_libraries:
+    name: Test libraries on ${{ matrix.os }}
+    needs: [build_linux, build_macos]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-14]
+        python-version: ["3.9", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download libraries for this platform
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mpt-crypto-*
+          path: artifacts
+
+      - name: Copy libraries to correct locations
+        shell: bash
+        run: |
+          mkdir -p xrpl/core/confidential/libs/linux
+          mkdir -p xrpl/core/confidential/libs/darwin
+          mkdir -p xrpl/core/confidential/libs/win32
+
+          cp artifacts/mpt-crypto-linux-x86_64/*.a xrpl/core/confidential/libs/linux/ 2>/dev/null || true
+          cp artifacts/mpt-crypto-darwin-universal/*.a xrpl/core/confidential/libs/darwin/ 2>/dev/null || true
+          cp artifacts/mpt-crypto-win32-x86_64/*.lib xrpl/core/confidential/libs/win32/ 2>/dev/null || true
+
+          echo "Libraries copied:"
+          ls -R xrpl/core/confidential/libs/ || dir /s xrpl\core\confidential\libs\
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install cffi
+
+      - name: Build C extension
+        run: |
+          python xrpl/core/confidential/build_mpt_crypto.py
+
+      - name: Test import
+        run: |
+          python -c "from xrpl.core.confidential import MPT_CRYPTO_AVAILABLE; print(f'MPT_CRYPTO_AVAILABLE: {MPT_CRYPTO_AVAILABLE}'); assert MPT_CRYPTO_AVAILABLE, 'C extension not available'"
+
+      - name: Test keypair generation
+        run: |
+          python -c "
+          from xrpl.core.confidential import MPTCrypto
+          crypto = MPTCrypto()
+          sk, pk = crypto.generate_keypair()
+          assert len(sk) == 64, f'Private key wrong length: {len(sk)}'
+          assert len(pk) == 128, f'Public key wrong length: {len(pk)}'
+          print(f'✓ Keypair generation works: sk={sk[:16]}... pk={pk[:32]}...')
+          "
+
+      - name: Test encryption/decryption
+        run: |
+          python -c "
+          from xrpl.core.confidential import MPTCrypto
+          crypto = MPTCrypto()
+          sk, pk = crypto.generate_keypair()
+
+          # Test various amounts
+          for amount in [0, 1, 100, 1000, 999999]:
+              c1, c2, bf = crypto.encrypt(pk, amount)
+              decrypted = crypto.decrypt(sk, c1, c2)
+              assert decrypted == amount, f'Decrypt failed: {decrypted} != {amount}'
+              print(f'✓ Encrypt/decrypt works for amount {amount}')
+
+          print('✓ All encryption/decryption tests passed')
+          "
+
+      - name: Test Pedersen commitment
+        run: |
+          python -c "
+          from xrpl.core.confidential import MPTCrypto
+          crypto = MPTCrypto()
+          commitment = crypto.create_pedersen_commitment(1000, 'A' * 64)
+          assert len(commitment) == 128, f'Commitment wrong length: {len(commitment)}'
+          print(f'✓ Pedersen commitment works: {commitment[:32]}...')
+          "
+
+      - name: Test proof generation
+        run: |
+          python -c "
+          from xrpl.core.confidential import MPTCrypto
+          crypto = MPTCrypto()
+          sk, pk, pok = crypto.generate_keypair_with_pok('0' * 64)
+          assert len(pok) == 130, f'PoK wrong length: {len(pok)}'
+          print(f'✓ Proof of knowledge generation works')
+          "
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ All tests passed on ${{ matrix.os }} with Python ${{ matrix.python-version }}"
