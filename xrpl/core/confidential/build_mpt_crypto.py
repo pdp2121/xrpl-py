@@ -242,6 +242,36 @@ if not os.path.exists(libs_dir):
         f"Please ensure the pre-compiled libraries are included in the repository."
     )
 
+# Platform-specific library and include directories
+library_dirs = [libs_dir]
+include_dirs = [include_dir]
+
+# On macOS, add Homebrew OpenSSL paths
+if system == "darwin":
+    # Try common Homebrew OpenSSL locations
+    homebrew_openssl_paths = [
+        "/opt/homebrew/opt/openssl/lib",  # Apple Silicon
+        "/usr/local/opt/openssl/lib",  # Intel
+        "/opt/homebrew/opt/openssl@3/lib",  # Apple Silicon OpenSSL 3
+        "/usr/local/opt/openssl@3/lib",  # Intel OpenSSL 3
+    ]
+    homebrew_openssl_include_paths = [
+        "/opt/homebrew/opt/openssl/include",
+        "/usr/local/opt/openssl/include",
+        "/opt/homebrew/opt/openssl@3/include",
+        "/usr/local/opt/openssl@3/include",
+    ]
+
+    for path in homebrew_openssl_paths:
+        if os.path.exists(path):
+            library_dirs.append(path)
+            break
+
+    for path in homebrew_openssl_include_paths:
+        if os.path.exists(path):
+            include_dirs.append(path)
+            break
+
 ffibuilder.set_source(
     "_mpt_crypto",
     """
@@ -249,8 +279,8 @@ ffibuilder.set_source(
     #include <secp256k1_mpt.h>
     """,
     libraries=["mpt-crypto", "secp256k1", "crypto"],
-    library_dirs=[libs_dir],
-    include_dirs=[include_dir],
+    library_dirs=library_dirs,
+    include_dirs=include_dirs,
 )
 
 if __name__ == "__main__":
