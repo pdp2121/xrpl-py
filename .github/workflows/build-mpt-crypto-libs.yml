@@ -199,7 +199,8 @@ jobs:
 
       - name: Build C extension
         run: |
-          python xrpl/core/confidential/build_mpt_crypto.py
+          cd xrpl/core/confidential
+          python build_mpt_crypto.py
 
       - name: Test import
         run: |
