@@ -179,7 +179,9 @@ jobs:
 
       - name: Install project dependencies
         run: |
-          poetry install --no-root
+          poetry install --no-root --extras confidential
+          # Install setuptools explicitly for Python 3.12+ (required by cffi)
+          poetry run pip install setuptools
 
       - name: Download libraries for this platform
         uses: actions/download-artifact@v4
