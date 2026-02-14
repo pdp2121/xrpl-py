@@ -11,6 +11,7 @@ on:
 
 # NOTE: This workflow builds mpt-crypto from tools/internal-ripplex-research-mpt-crypto/mpt-crypto
 # Make sure this directory is committed to your repository
+# trigger test
 
 jobs:
   build_linux:
