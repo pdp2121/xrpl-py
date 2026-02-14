@@ -39,7 +39,8 @@ jobs:
                    -DSECP256K1_SOURCE_DIR=/tmp/secp256k1 \
                    -DBUILD_SHARED_LIBS=OFF \
                    -DBUILD_TESTS=OFF \
-                   -DBUILD_UTILITY=OFF
+                   -DBUILD_UTILITY=OFF \
+                   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
           make
           # List what was built
           find . -name "*.a" -o -name "*.so" -o -name "*.dylib"
@@ -83,7 +84,8 @@ jobs:
                    -DSECP256K1_SOURCE_DIR=/tmp/secp256k1 \
                    -DBUILD_SHARED_LIBS=OFF \
                    -DBUILD_TESTS=OFF \
-                   -DBUILD_UTILITY=OFF
+                   -DBUILD_UTILITY=OFF \
+                   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
           make
           # List what was built
           find . -name "*.a" -o -name "*.so" -o -name "*.dylib"
