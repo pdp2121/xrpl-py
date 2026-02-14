@@ -205,15 +205,15 @@ jobs:
       - name: Build C extension
         run: |
           cd xrpl/core/confidential
-          python build_mpt_crypto.py
+          poetry run python build_mpt_crypto.py
 
       - name: Test import
         run: |
-          python -c "from xrpl.core.confidential import MPT_CRYPTO_AVAILABLE; print(f'MPT_CRYPTO_AVAILABLE: {MPT_CRYPTO_AVAILABLE}'); assert MPT_CRYPTO_AVAILABLE, 'C extension not available'"
+          poetry run python -c "from xrpl.core.confidential import MPT_CRYPTO_AVAILABLE; print(f'MPT_CRYPTO_AVAILABLE: {MPT_CRYPTO_AVAILABLE}'); assert MPT_CRYPTO_AVAILABLE, 'C extension not available'"
 
       - name: Test keypair generation
         run: |
-          python -c "
+          poetry run python -c "
           from xrpl.core.confidential import MPTCrypto
           crypto = MPTCrypto()
           sk, pk = crypto.generate_keypair()
@@ -224,7 +224,7 @@ jobs:
 
       - name: Test encryption/decryption
         run: |
-          python -c "
+          poetry run python -c "
           from xrpl.core.confidential import MPTCrypto
           crypto = MPTCrypto()
           sk, pk = crypto.generate_keypair()
@@ -241,7 +241,7 @@ jobs:
 
       - name: Test Pedersen commitment
         run: |
-          python -c "
+          poetry run python -c "
           from xrpl.core.confidential import MPTCrypto
           crypto = MPTCrypto()
           commitment = crypto.create_pedersen_commitment(1000, 'A' * 64)
@@ -251,7 +251,7 @@ jobs:
 
       - name: Test proof generation
         run: |
-          python -c "
+          poetry run python -c "
           from xrpl.core.confidential import MPTCrypto
           crypto = MPTCrypto()
           sk, pk, pok = crypto.generate_keypair_with_pok('0' * 64)
